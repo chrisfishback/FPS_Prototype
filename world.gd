@@ -5,6 +5,7 @@ extends Node
 @onready var hud = $CanvasLayer/HUD
 @onready var health_bar = $CanvasLayer/HUD/HealthBar
 @onready var FPS = $CanvasLayer/HUD/FPS
+@onready var menu_art = $CanvasLayer/MenuBackground
 
 const Player = preload("res://player.tscn")
 const PORT = 9999
@@ -19,6 +20,7 @@ func _unhandled_input(event):
 
 func _on_host_button_pressed():
 	main_menu.hide()
+	menu_art.hide()
 	hud.show()
 	
 	enet_peer.create_server(PORT)
@@ -32,6 +34,7 @@ func _on_host_button_pressed():
 
 func _on_join_button_pressed():
 	main_menu.hide()
+	menu_art.hide()
 	hud.show()
 	
 	enet_peer.create_client(address_entry.text, PORT)
