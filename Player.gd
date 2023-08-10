@@ -5,14 +5,16 @@ signal health_changed(health_value)
 @onready var camera = $Camera3D
 @onready var anim_player = $AnimationPlayer
 @onready var fire_cast = $Camera3D/Staff/FireCast
-@onready var raycast =  $Camera3D/RayCast3D
+@onready var ray =  $Camera3D/RayCast3D
 
 var health = 3
 
 const SPEED = 8.0
 const JUMP_VELOCITY = 6.5
 
-# Get the gravity from the project settings to be synced with RigidBody nodes.
+var Fireball = preload("res://fireball.tscn")
+var instance
+
 var gravity = 12.0
 
 func _enter_tree():
@@ -26,6 +28,12 @@ func _ready():
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	camera.current = true
 
+#func _process(delta):
+#	if ray.is_colliding:
+#			var hit_player = ray.get_collider()
+#			if hit_player:
+#				hit_player.receive_damage.rpc_id(hit_player.get_multiplayer_authority()) #call only for player being hit
+
 func _unhandled_input(event):
 	if not is_multiplayer_authority(): return
 	
@@ -36,10 +44,8 @@ func _unhandled_input(event):
 	
 	if Input.is_action_just_pressed("shoot") and anim_player.current_animation != "shoot":
 		play_shoot_effects.rpc()
-		
-		if raycast.is_colliding():
-			var hit_player = raycast.get_collider()
-			hit_player.receive_damage.rpc_id(hit_player.get_multiplayer_authority()) #call only for player being hit
+		# shoot fireball
+		shoot.rpc()
 
 func _physics_process(delta):
 	if not is_multiplayer_authority(): return
@@ -79,14 +85,25 @@ func play_shoot_effects():
 	fire_cast.restart()
 	fire_cast.emitting = true
 
+func receive_damage(damage, hurt_player):
+	if hurt_player:
+		hurt_player.take_and_emit_damage.rpc_id(hurt_player.get_multiplayer_authority()) #call only for player being hit
+
 @rpc("any_peer")
-func receive_damage():
+func take_and_emit_damage():
 	health -= 1
 	if health <= 0:
 		health = 3
 		position = Vector3.ZERO
-	
 	health_changed.emit(health)
+
+@rpc("call_local")
+func shoot():
+	instance = Fireball.instantiate()
+	instance.position = ray.global_position
+	instance.transform.basis = ray.global_transform.basis
+	get_parent().add_child(instance)
+	instance.player_hit.connect(receive_damage)
 
 func _on_animation_player_animation_finished(anim_name):
 	if anim_name == "shoot":
